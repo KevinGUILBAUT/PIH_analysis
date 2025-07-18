@@ -239,5 +239,5 @@ if __name__ == '__main__':
 
     sex_df.plot(kind="hist", ax=ax[1, 1])
     ax[1, 1].set_title('Gender')
-    fig.savefig(f'../Vitaldb_database_2/figures/characteristics.png')
+    fig.savefig(f'./figures/characteristics.png')
     plt.close(fig)
