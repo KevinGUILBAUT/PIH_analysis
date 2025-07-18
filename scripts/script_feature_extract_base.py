@@ -48,6 +48,7 @@ def compute_linear_trends_for_patient(patient_data,
     
     # Get patient static info (from first row)
     first_row = patient_data.iloc[0]
+
     patient_features['age'] = first_row['age']
     patient_features['asa'] = first_row['asa']
     patient_features['gender'] = first_row['gender']
@@ -55,11 +56,13 @@ def compute_linear_trends_for_patient(patient_data,
     patient_features['height'] = first_row['height']
     patient_features['bmi'] = first_row['bmi']
     
-    patient_features['preop_hyper'] = first_row['preop_hyper']
-    patient_features['preop_diab'] = first_row['preop_diab']
-    patient_features['preop_ecg'] = first_row['preop_ecg']
-    patient_features['preop_pft'] = first_row['preop_pft']
-    patient_features['preop_crea'] = first_row['preop_crea']
+    ### COMORBIDITIES
+
+    #patient_features['preop_hyper'] = first_row['preop_hyper']
+    #patient_features['preop_diab'] = first_row['preop_diab']
+    #patient_features['preop_ecg'] = first_row['preop_ecg']
+    #patient_features['preop_pft'] = first_row['preop_pft']
+    #patient_features['preop_crea'] = first_row['preop_crea']
     patient_features['label'] = first_row['hypotension']
 
     patient_features['MAP_base_case'] = first_row['MAP_base_case']
@@ -69,18 +72,18 @@ def compute_linear_trends_for_patient(patient_data,
     patient_features['Target_Propo_Base'] = first_row['Target_Propo_Base']
     patient_features['Target_Remi_Base'] = first_row['Target_Remi_Base']
 
-    patient_features['duration_first_injec_propo'] = first_row['duration_first_injec_propo']
-    patient_features['mean_first_injec_propo'] = first_row['mean_first_injec_propo']
-    patient_features['duration_first_injec_remi'] = first_row['duration_first_injec_remi']
-    patient_features['mean_first_injec_remi'] = first_row['mean_first_injec_remi']
+    ### More info about the first injection
+    #patient_features['duration_first_injec_propo'] = first_row['duration_first_injec_propo']
+    #patient_features['mean_first_injec_propo'] = first_row['mean_first_injec_propo']
+    #patient_features['duration_first_injec_remi'] = first_row['duration_first_injec_remi']
+    #patient_features['mean_first_injec_remi'] = first_row['mean_first_injec_remi']
 
-    patient_features['optype'] = first_row['optype']
-    patient_features['department'] = first_row['department']
+    
+    #patient_features['optype'] = first_row['optype']
+    #patient_features['department'] = first_row['department']
     
     induction_start = first_row['start_induc_time']
-    patient_features['start_induc_time_min'] = induction_start/60
-    
-    intubation_start = first_row['start_intubation_time']
+    #patient_features['start_induc_time_min'] = induction_start/60
 
     # Compute trends for each signal and window size
     for original_col, signal_name in signal_mapping.items():
@@ -249,17 +252,11 @@ if __name__ == "__main__":
     window_sizes =[60] # Different time windows 
     signal_mapping = {
         'BIS': 'bis',
-        #'MAP': 'map', 
         'NI_MAP': 'ni_map',
-        #'SBP': 'sbp',
         'NI_SBP': 'ni_sbp', 
-        #'DBP': 'dbp',
         'NI_DBP': 'ni_dbp',
         'HR': 'hr',
         'SpO2': 'spo2',
-        #'EtCO2': 'etco2',
-        #'Body_Temp': 'body_temp',
-        #'RR': 'rr',
     }
 
     n_jobs = max(1, cpu_count() - 1)
@@ -289,14 +286,7 @@ if __name__ == "__main__":
         # Drop columns with more than 70% NaN values
         final_dataset = drop_high_nan_columns(final_dataset, threshold=0.5)
 
-        
-        # Encode the categorical features
-        final_dataset = pd.get_dummies(final_dataset, columns=['preop_ecg', 'preop_pft','optype', 'department'], prefix=['ecg', 'pft','op','dep'])
 
-        # Save final dataset
-        os.makedirs('./data/features_extracted', exist_ok=True)
-        final_dataset.to_csv("./data/features_extracted/data.csv", index=False)
-        
         print(f"\nDataset saved to:")
         print(f"- ./data/features_extracted/data.csv")
         
@@ -321,6 +311,15 @@ if __name__ == "__main__":
             print(f"Converted {len(bool_columns)} boolean columns to integers")
         else:
             print("\nNo boolean columns found to convert")
+
+                
+        # for the categorical features
+        #final_dataset = pd.get_dummies(final_dataset, columns=['preop_ecg', 'preop_pft','optype', 'department'], prefix=['ecg', 'pft','op','dep'])
+
+        # Save final dataset
+        os.makedirs('./data/features_extracted', exist_ok=True)
+        final_dataset.to_csv("./data/features_extracted/data.csv", index=False)
+        
 
         X = final_dataset.drop(columns='label')
         y = final_dataset['label']
