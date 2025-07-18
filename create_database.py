@@ -181,7 +181,7 @@ def process_patient(patient_data, perso_data):
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig(f'./data/figures/case_{caseid}.png')
+        plt.savefig(f'./data/figures/RR/case_{caseid}.png')
 
         Patient_df.insert(len(Patient_df.columns), "intubation_detection_method", intubation_detection_method)
 
