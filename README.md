@@ -11,16 +11,6 @@ Use a new virtual env and Python 3.11 for maximal compatibility.
 ```bash
 git clone https://github.com/KevinGUILBAUT/PIH_analysis PIH
 cd PIH
-pip install .
-```
-
-### Dev / Contribution
-
-In addition, you can add the optional build `dev`. So you will download the Python packages required to develop the project (unit test, linter, formatter).
-
-```bash
-git clone https://github.com/KevinGUILBAUT/PIH_analysis PIH
-cd PIH
 pip install -e .[dev]
 ```
 
