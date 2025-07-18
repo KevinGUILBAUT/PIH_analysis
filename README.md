@@ -1,6 +1,6 @@
 # Post-Induction Hypotension
 ## Overview
-Post-induction hypotension (PIH) is a common and potentially complication during anesthesia induction. This project provides a comprehensive machine learning pipeline to predict PIH occurrence using physiological data from the [VitalDB](https://vitaldb.net/) dataset.
+This project provides a comprehensive machine learning pipeline to predict Post-induction hypotension (PIH) occurrence using physiological data from the [VitalDB](https://vitaldb.net/) dataset.
 
 This project was built during a research internship supervised by [Bob AUBOUIN](https://github.com/BobAubouin) and Kaouther MOUSSA.
 
