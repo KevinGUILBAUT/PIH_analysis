@@ -11,6 +11,18 @@ from sklearn.metrics import precision_recall_curve, roc_curve, auc
 from sklearn.calibration import calibration_curve
 
 
+def _revert_dict(d):
+    return dict(chain(*[zip(val, repeat(key)) for key, val in d.items()]))
+
+
+def _grouped_shap(shap_vals, features, groups):
+    groupmap = _revert_dict(groups)
+    shap_Tdf = pd.DataFrame(shap_vals, columns=pd.Index(features, name='features')).T
+    shap_Tdf['group'] = shap_Tdf.reset_index().features.map(groupmap).values
+    shap_grouped = shap_Tdf.groupby('group').sum().T
+    return shap_grouped
+
+
 class Test_Model:
     def __init__(self, model_configs: list, output_name: str):
         """
@@ -56,7 +68,7 @@ class Test_Model:
                 train_data_clean = train_data.dropna(subset=features_names).copy()
             else:
                 train_data_clean = None
-                  
+                
             # Clean baseline feature if it exists
             baseline_feature = config.get('baseline_feature', None)
             if baseline_feature is not None:
@@ -139,7 +151,7 @@ class Test_Model:
             roc_auc = auc(fpr, tpr)
             
             plt.plot(fpr, tpr, color=color, lw=2,
-                    label=f'{model_name} (AUC = {roc_auc:.3f})')
+                     label=f'{model_name} (AUC = {roc_auc:.3f})')
         
         plt.plot([0, 1], [0, 1], 'k--', lw=2, alpha=0.6, label='Random')
         plt.xlim([0.0, 1.0])
@@ -152,7 +164,7 @@ class Test_Model:
         
         if save_fig:
             plt.savefig(self.figures_dir / f"ROC_curves_{self.output_name}.png", 
-                       dpi=300, bbox_inches='tight')
+                        dpi=300, bbox_inches='tight')
         plt.show()
 
     def plot_precision_recall_curve(self, model_indices=None, save_fig=True):
@@ -177,12 +189,12 @@ class Test_Model:
             pr_auc = auc(recall, precision)
             
             plt.plot(recall, precision, color=color, lw=2,
-                    label=f'{model_name} (AUC = {pr_auc:.3f})')
+                     label=f'{model_name} (AUC = {pr_auc:.3f})')
         
         # Add baseline (random classifier)
         baseline = np.mean([np.mean(y_true) for y_true in self.y_true_list])
         plt.axhline(y=baseline, color='k', linestyle='--', alpha=0.6, 
-                   label=f'Baseline (Prevalence = {baseline:.3f})')
+                    label=f'Baseline (Prevalence = {baseline:.3f})')
         
         plt.xlim([0.0, 1.0])
         plt.ylim([0.0, 1.05])
@@ -194,11 +206,11 @@ class Test_Model:
         
         if save_fig:
             plt.savefig(self.figures_dir / f"PR_curves_{self.output_name}.png", 
-                       dpi=300, bbox_inches='tight')
+                        dpi=300, bbox_inches='tight')
         plt.show()
 
     def plot_shap_values(self, model_indices=None, feature_groups=None, 
-                     max_display=15, save_fig=True):
+                         max_display=15, save_fig=True):
         """Plot SHAP values for selected models"""
         if model_indices is None:
             model_indices = list(range(len(self.models)))
@@ -222,24 +234,105 @@ class Test_Model:
                 # Bar plot (feature importance)
                 plt.figure(figsize=(10, 8))
                 shap.summary_plot(shap_values, X_test.columns.tolist(), 
-                                plot_type="bar", max_display=max_display, show=False)
+                                 plot_type="bar", max_display=10, show=False)
                 plt.title(f'SHAP Feature Importance - {model_name}')
                 if save_fig:
                     plt.savefig(self.figures_dir / f"SHAP_importance_{model_name}_{self.output_name}.png", 
-                                dpi=300, bbox_inches='tight')
+                                 dpi=300, bbox_inches='tight')
                 plt.show()
 
-                shap.summary_plot(shap_values, X_test, max_display=max_display, show=False)
-                plt.gcf().set_size_inches(10, 8)  # fixe la taille de la figure déjà créée
+                shap.summary_plot(shap_values, X_test, max_display=10, show=False)
+                plt.gcf().set_size_inches(10, 8) 
                 plt.tight_layout()
                 plt.title(f'SHAP Summary Plot - {model_name}', fontsize=14)
                 if save_fig:
                     plt.savefig(self.figures_dir / f"SHAP_summary_{model_name}_{self.output_name}.png", 
-                                dpi=300, bbox_inches='tight')
+                                 dpi=300, bbox_inches='tight')
                 plt.show()
 
             except Exception as e:
                 print(f"Error computing SHAP values for {model_name}: {e}")
+
+    
+    def plot_logistic_coefficients(self, model_indices=None, max_features=10, save_fig=True):
+        """Plot coefficients for logistic regression models"""
+        if model_indices is None:
+            model_indices = list(range(len(self.models)))
+        
+        logistic_indices = []
+        for idx in model_indices:
+            model = self.models[idx]
+            model_type = self.model_types[idx]
+            
+            # Check if it's a logistic regression model
+            if (hasattr(model, 'coef_') and hasattr(model, 'intercept_')) or model_type == 'logistic':
+                logistic_indices.append(idx)
+        
+        if not logistic_indices:
+            print("No logistic regression model found among the selected models.")
+            return
+        
+        n_models = len(logistic_indices)
+        fig, axes = plt.subplots(1, n_models, figsize=(8*n_models, 6))
+        
+        if n_models == 1:
+            axes = [axes]
+        
+        for i, idx in enumerate(logistic_indices):
+            model = self.models[idx]
+            model_name = self.model_names[idx]
+            features_names = self.features_names_list[idx]
+            
+            # Extract coefficients
+            if hasattr(model, 'coef_'):
+                coefficients = model.coef_[0] 
+                intercept = model.intercept_[0] if hasattr(model, 'intercept_') else 0
+            else:
+                print(f"Could not extract coefficients for {model_name}")
+                continue
+            
+            coef_df = pd.DataFrame({
+                'feature': features_names,
+                'coefficient': coefficients,
+                'abs_coefficient': np.abs(coefficients)
+            })
+            
+            # Sort by absolute coefficient value and keep only the top N
+            coef_df = coef_df.sort_values('abs_coefficient', ascending=False)
+            if max_features is not None and len(coef_df) > max_features:
+                coef_df = coef_df.head(max_features)
+            
+            # Re-sort by coefficient value for display (smallest at the bottom)
+            coef_df = coef_df.sort_values('coefficient', ascending=True)
+            
+            # Create horizontal bar chart
+            colors = ['red' if x < 0 else 'blue' for x in coef_df['coefficient']]
+            bars = axes[i].barh(range(len(coef_df)), coef_df['coefficient'], color=colors, alpha=0.7)
+            
+
+            axes[i].set_yticks(range(len(coef_df)))
+            axes[i].set_yticklabels(coef_df['feature'])
+            axes[i].set_xlabel('Coefficient Value')
+            axes[i].set_title(f'Top {len(coef_df)} Logistic Regression Coefficients - {model_name}')
+            axes[i].axvline(x=0, color='black', linestyle='-', alpha=0.3)
+            axes[i].grid(True, alpha=0.3)
+            
+            # Add values to the bars
+            for j, (bar, coef) in enumerate(zip(bars, coef_df['coefficient'])):
+                width = bar.get_width()
+                axes[i].text(width + (0.01 if width >= 0 else -0.01), bar.get_y() + bar.get_height()/2,
+                             f'{coef:.3f}', ha='left' if width >= 0 else 'right', va='center', fontsize=8)
+            
+            # Display the intercept
+            axes[i].text(0.02, 0.98, f'Intercept: {intercept:.3f}', 
+                         transform=axes[i].transAxes, verticalalignment='top',
+                         bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+        
+        plt.tight_layout()
+        if save_fig:
+            plt.savefig(self.figures_dir / f"logistic_coefficients_{self.output_name}.png", 
+                        dpi=300, bbox_inches='tight')
+        plt.show()
 
 
     def plot_predicted_probabilities(self, model_indices=None, n_bins=20, save_fig=True):
@@ -268,13 +361,13 @@ class Test_Model:
             axes[0, i].set_ylabel('Density')
             axes[0, i].grid(True, alpha=0.3)
             
-            # Calibration curve 
+            # Calibration curve (predicted vs actual frequency)
             fraction_of_positives, mean_predicted_value = calibration_curve(
                 y_true, y_pred, n_bins=n_bins, strategy='uniform'
             )
             
             axes[1, i].plot(mean_predicted_value, fraction_of_positives, 
-                           marker='o', linewidth=2, markersize=6)
+                            marker='o', linewidth=2, markersize=6)
             axes[1, i].plot([0, 1], [0, 1], 'k--', alpha=0.6, label='Perfect calibration')
             axes[1, i].set_title(f'Calibration Curve - {model_name}')
             axes[1, i].set_xlabel('Mean Predicted Probability')
@@ -285,7 +378,7 @@ class Test_Model:
         plt.tight_layout()
         if save_fig:
             plt.savefig(self.figures_dir / f"predicted_probabilities_{self.output_name}.png", 
-                       dpi=300, bbox_inches='tight')
+                        dpi=300, bbox_inches='tight')
         plt.show()
 
     def run(self, model_indices=None, feature_groups=None, 
@@ -305,4 +398,3 @@ class Test_Model:
         
         print("Computing and plotting SHAP values...")
         self.plot_shap_values(model_indices, feature_groups, max_shap_display, save_figs)
-        
