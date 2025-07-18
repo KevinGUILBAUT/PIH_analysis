@@ -4,10 +4,8 @@ and uses RFE for feature selection.
 """
 
 # Import
-import sys
 import pandas as pd
 import numpy as np
-import python_anesthesia_simulator as pas
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
