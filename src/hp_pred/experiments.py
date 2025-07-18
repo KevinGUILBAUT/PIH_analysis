@@ -18,58 +18,6 @@ from optuna import Trial
 NUMBER_CV_FOLD = 3
 N_INTERPOLATION = 1000
 
-def objective_super_model_xgboost(
-    trial: Trial,
-    data_train: list[pd.DataFrame],
-    data_test: list[pd.DataFrame],
-    feature_name: List[str],
-) -> float:
-    """
-    Calculate the mean AUC score for XGBoost model using Optuna hyperparameter optimization.
-
-    Args:
-        trial (Trial): Optuna trial object for hyperparameter optimization.
-        data_train (list[pd.DataFrame]): List of training data sets.
-        data_test (list[pd.DataFrame]): List of testing data sets corresponding to the training data sets.
-    Returns:
-        float: Mean AUC score of the XGBoost model.
-
-    """
-    params = {
-        "max_depth": trial.suggest_int("max_depth", 1, 9),
-        "learning_rate": trial.suggest_float("learning_rate", 0.001, 0.1, log=True),
-        "n_estimators": trial.suggest_int("n_estimators", 50, 500),
-        "min_child_weight": trial.suggest_int("min_child_weight", 1, 10),
-        "gamma": trial.suggest_float("gamma", 1e-8, 1.0, log=True),
-        "subsample": trial.suggest_float("subsample", 0.6, 1.0),
-        "colsample_bytree": trial.suggest_float(
-            "colsample_bytree", 0.01, 1.0, log=True
-        ),
-        "reg_alpha": trial.suggest_float("reg_alpha", 1e-8, 1.0, log=True),
-        "reg_lambda": trial.suggest_float("reg_lambda", 1e-8, 1.0, log=True),
-        "eval_metric": trial.suggest_categorical("eval_metric", ["auc", "aucpr", "logloss", "map"]),
-        "objective": "binary:logistic",
-        "nthread": os.cpu_count(),
-        # "scale_pos_weight": data.label.value_counts()[0] / data.label.value_counts()[1],
-    }
-
-    X_train = data_train[feature_name]
-    y_train = data_train.label
-
-    X_validate = data_test[feature_name]
-    y_validate = data_test.label
-
-    optuna_model = XGBClassifier(**params)
-    optuna_model.fit(X_train, y_train)
-    # Make predictions
-    y_pred = optuna_model.predict_proba(X_validate)[:, 1]
-
-    # Evaluate predictions with AP score
-    score = average_precision_score(y_validate, y_pred)
-
-    return score
-
-
 def objective_rotationforest(
     trial: Trial,
     data_train: list[pd.DataFrame],
