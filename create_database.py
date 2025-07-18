@@ -6,9 +6,12 @@ import matplotlib.pyplot as plt
 from multiprocessing import Pool, cpu_count
 from functools import partial
 import warnings
+import os
 
 warnings.filterwarnings('ignore')
 
+# Create folder for figures if it doesn't exist
+os.makedirs('./data/figures/RR', exist_ok=True)
 
 try:
     from vitaldb_local import load_cases
